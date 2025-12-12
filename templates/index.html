@@ -26,6 +26,10 @@
                     <input type="radio" name="configMode" value="custom">
                     <span>Custom Input</span>
                 </label>
+                <label class="radio-option">
+                    <input type="radio" name="configMode" value="algorithm">
+                    <span>Custom Algorithm</span>
+                </label>
             </div>
 
             <div id="customInputs" class="custom-inputs" style="display: none;">
@@ -40,6 +44,30 @@
                 </div>
                 <button class="btn btn-primary" id="validateBtn">Validate Input</button>
                 <div id="validationMessage"></div>
+            </div>
+
+            <div id="customAlgorithm" class="custom-algorithm" style="display: none;">
+                <div class="algorithm-help">
+                    <p><strong>Paste your algorithm code below:</strong></p>
+                    <p>Your function should take <code>(items, capacity)</code> and return a list of bins.</p>
+                    <p>Example: <code>def MyAlgo(items, capacity): ...</code></p>
+                    <a href="https://github.com/yourusername/td4-simulation/blob/main/STUDENT_API_GUIDE.md" target="_blank">View Guide</a>
+                </div>
+                <textarea id="algorithmCode" placeholder="def MyAlgorithm(items, capacity):
+    bins = [[]]
+
+    for item in items:
+        if sum(bins[-1]) + item <= capacity:
+            bins[-1].append(item)
+        else:
+            bins.append([item])
+
+    return bins
+
+ALGORITHM_NAME = 'My Algorithm'
+COMPLEXITY = 'O(N)'"></textarea>
+                <button class="btn btn-primary" id="validateAlgoBtn">Validate Algorithm</button>
+                <div id="algoValidationMessage"></div>
             </div>
         </div>
 

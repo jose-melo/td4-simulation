@@ -22,6 +22,11 @@ class BinPackingApp {
         this.customItems = null;
         this.isCustomMode = false;
 
+        // Custom algorithm state
+        this.customAlgorithmCode = null;
+        this.isCustomAlgorithm = false;
+        this.customAlgorithmName = '';
+
         // DOM elements
         this.elements = {};
     }
@@ -75,6 +80,11 @@ class BinPackingApp {
             validateBtn: document.getElementById('validateBtn'),
             validationMessage: document.getElementById('validationMessage'),
             itemsListTitle: document.getElementById('itemsListTitle'),
+            // Custom algorithm elements
+            customAlgorithm: document.getElementById('customAlgorithm'),
+            algorithmCode: document.getElementById('algorithmCode'),
+            validateAlgoBtn: document.getElementById('validateAlgoBtn'),
+            algoValidationMessage: document.getElementById('algoValidationMessage'),
         };
     }
 
@@ -111,6 +121,9 @@ class BinPackingApp {
                 this.validateCustomInput();
             }
         });
+
+        // Validate algorithm button
+        this.elements.validateAlgoBtn.addEventListener('click', () => this.validateCustomAlgorithm());
     }
 
     /**
@@ -133,25 +146,40 @@ class BinPackingApp {
     }
 
     /**
-     * Handle config mode change (Demo vs Custom)
+     * Handle config mode change (Demo vs Custom vs Algorithm)
      */
     handleConfigModeChange(e) {
-        const isCustom = e.target.value === 'custom';
-        this.elements.customInputs.style.display = isCustom ? 'block' : 'none';
+        const mode = e.target.value;
 
-        if (!isCustom) {
+        // Show/hide appropriate sections
+        this.elements.customInputs.style.display = mode === 'custom' ? 'block' : 'none';
+        this.elements.customAlgorithm.style.display = mode === 'algorithm' ? 'block' : 'none';
+
+        if (mode === 'demo') {
             // Reset to demo mode
             this.isCustomMode = false;
+            this.isCustomAlgorithm = false;
             this.customCapacity = null;
             this.customItems = null;
+            this.customAlgorithmCode = null;
             this.elements.validationMessage.className = '';
             this.elements.validationMessage.style.display = 'none';
+            this.elements.algoValidationMessage.className = '';
+            this.elements.algoValidationMessage.style.display = 'none';
 
             // Update visualizer with demo data
             this.visualizer.setItems(this.config.items);
             this.visualizer.capacity = this.config.capacity;
             this.elements.itemsListTitle.textContent = `Items to Pack (Capacity: ${this.config.capacity})`;
             this.displayInitialInfo();
+        } else if (mode === 'custom') {
+            this.isCustomAlgorithm = false;
+            this.elements.algoValidationMessage.className = '';
+            this.elements.algoValidationMessage.style.display = 'none';
+        } else if (mode === 'algorithm') {
+            this.isCustomMode = false;
+            this.elements.validationMessage.className = '';
+            this.elements.validationMessage.style.display = 'none';
         }
     }
 
@@ -241,6 +269,68 @@ class BinPackingApp {
     }
 
     /**
+     * Validate custom algorithm code
+     */
+    async validateCustomAlgorithm() {
+        const algoMsg = this.elements.algoValidationMessage;
+        algoMsg.className = '';
+        algoMsg.style.display = 'none';
+
+        const code = this.elements.algorithmCode.value.trim();
+        if (!code) {
+            this.showAlgoValidationError('Please enter your algorithm code');
+            return;
+        }
+
+        try {
+            // Call backend to validate
+            const response = await fetch('/api/custom/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.valid) {
+                this.customAlgorithmCode = code;
+                this.customAlgorithmName = result.algorithm_name || 'Custom Algorithm';
+                this.isCustomAlgorithm = true;
+
+                this.showAlgoValidationSuccess(
+                    `✓ Algorithm "${this.customAlgorithmName}" validated! ` +
+                    `Test result: ${result.bins_used} bins used`
+                );
+            } else {
+                this.showAlgoValidationError(result.error || 'Validation failed');
+            }
+        } catch (error) {
+            console.error('Validation error:', error);
+            this.showAlgoValidationError('Network error: ' + error.message);
+        }
+    }
+
+    /**
+     * Show algorithm validation error
+     */
+    showAlgoValidationError(message) {
+        const algoMsg = this.elements.algoValidationMessage;
+        algoMsg.textContent = '✗ ' + message;
+        algoMsg.className = 'error';
+        algoMsg.style.display = 'block';
+    }
+
+    /**
+     * Show algorithm validation success
+     */
+    showAlgoValidationSuccess(message) {
+        const algoMsg = this.elements.algoValidationMessage;
+        algoMsg.textContent = message;
+        algoMsg.className = 'success';
+        algoMsg.style.display = 'block';
+    }
+
+    /**
      * Start the simulation
      */
     async start() {
@@ -249,6 +339,12 @@ class BinPackingApp {
         // Check if using custom mode without validation
         if (this.isCustomMode && (!this.customCapacity || !this.customItems)) {
             this.showError('Please validate your custom input first');
+            return;
+        }
+
+        // Check if using custom algorithm without validation
+        if (this.isCustomAlgorithm && !this.customAlgorithmCode) {
+            this.showError('Please validate your custom algorithm first');
             return;
         }
 
@@ -266,22 +362,63 @@ class BinPackingApp {
             this.elements.capacityInput.disabled = true;
             this.elements.itemsInput.disabled = true;
             this.elements.validateBtn.disabled = true;
+            this.elements.algorithmCode.disabled = true;
+            this.elements.validateAlgoBtn.disabled = true;
 
-            // Start simulation on backend with appropriate data
-            const capacity = this.isCustomMode ? this.customCapacity : null;
-            const items = this.isCustomMode ? this.customItems : null;
+            let result;
 
-            const result = await this.api.startSimulation(this.currentAlgorithm, capacity, items);
+            if (this.isCustomAlgorithm) {
+                // Start custom algorithm simulation
+                const capacity = this.isCustomMode ? this.customCapacity : this.config.capacity;
+                const items = this.isCustomMode ? this.customItems : this.config.items;
 
-            console.log('Simulation started:', result);
+                const response = await fetch('/api/custom/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: this.customAlgorithmCode,
+                        capacity: capacity,
+                        items: items
+                    })
+                });
 
-            const algoNames = {
+                result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to run custom algorithm');
+                }
+
+                // Store session ID for custom algorithm
+                this.customSessionId = result.session_id;
+
+                // Update items list to reflect any ordering the student algorithm applied
+                if (result.state && Array.isArray(result.state.items_order)) {
+                    this.visualizer.setItems(result.state.items_order);
+                } else {
+                    this.visualizer.setItems(items);
+                }
+                this.visualizer.capacity = capacity;
+                this.elements.itemsListTitle.textContent = `Items to Pack (Capacity: ${capacity})`;
+
+                console.log('Custom algorithm started:', result);
+            } else {
+                // Start built-in algorithm simulation
+                const capacity = this.isCustomMode ? this.customCapacity : null;
+                const items = this.isCustomMode ? this.customItems : null;
+
+                result = await this.api.startSimulation(this.currentAlgorithm, capacity, items);
+
+                console.log('Simulation started:', result);
+            }
+
+            const algoName = this.isCustomAlgorithm ? this.customAlgorithmName : {
                 'ff': 'First Fit',
                 'bf': 'Best Fit',
                 'nf': 'Next Fit'
-            };
+            }[this.currentAlgorithm];
+
             this.visualizer.updateExplanation(
-                `<strong>${algoNames[this.currentAlgorithm]}</strong> algorithm ready. Click "Next Step" to begin!`
+                `<strong>${algoName}</strong> algorithm ready. Click "Next Step" to begin!`
             );
             this.visualizer.hideSummary();
 
