@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bin Packing Problem - Interactive Visualizer</title>
+    <title>Bin Packing</title>
     <style>
         * {
             margin: 0;
@@ -136,8 +137,15 @@
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
         }
 
         .stats {
@@ -195,8 +203,15 @@
         }
 
         @keyframes checking {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
         }
 
         .bin.selected {
@@ -246,6 +261,7 @@
                 transform: translateY(-20px);
                 opacity: 0;
             }
+
             to {
                 transform: translateY(0);
                 opacity: 1;
@@ -348,11 +364,11 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
-            <h1>Bin Packing Problem Visualizer</h1>
-            <p>Interactive Step-by-Step Greedy Algorithms</p>
+            <h1>Bin Packing </h1>
         </div>
 
         <div class="controls">
@@ -758,4 +774,5 @@
         const visualizer = new BinPackingVisualizer();
     </script>
 </body>
+
 </html>
